@@ -9,11 +9,12 @@
  */
 
 struct ListNode* reverse(struct ListNode *);
+int count(struct ListNode*);
 
 struct ListNode* removeNthFromEnd(struct ListNode* head, int n){
     struct ListNode* cur;
     struct ListNode* tmp;
-    int i;
+    int i, total_nodes;
     
     if(head==NULL)
         return head;
@@ -23,7 +24,8 @@ struct ListNode* removeNthFromEnd(struct ListNode* head, int n){
         return head;
     }
     
-    head = reverse(head);
+    total_nodes = count(head);
+    n = total_nodes - n + 1;
     
     for(i=0, cur=head; i<n-2; cur=cur->next, ++i);
     if(n-2 == -1) {
@@ -36,9 +38,7 @@ struct ListNode* removeNthFromEnd(struct ListNode* head, int n){
         cur->next = cur->next->next;
         free(tmp);
     }
-    
-    head = reverse(head);
-    
+        
     return head;    
 }
 
@@ -61,4 +61,12 @@ struct ListNode* reverse(struct ListNode *head) {
         
     
     return left;
+}
+
+int count(struct ListNode* head) {
+    int i;
+    struct ListNode* cur;
+    for(i=0, cur=head; cur!=NULL; i++, cur=cur->next);
+    
+    return i;
 }
