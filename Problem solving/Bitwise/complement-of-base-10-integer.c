@@ -1,15 +1,11 @@
 // https://leetcode.com/problems/complement-of-base-10-integer/
 #include <math.h>
 
-int getMask(int n) {
-    int bits = ((int) log2(n)) +1;
-    return pow(2, bits) - 1;
-}
-
 int bitwiseComplement(int N){
+    int mask;
     if(N==0)
         return 1;
     
-    int mask = getMask(N);
-    return ~N&mask;
+    mask = pow(2, ( ((int) log2(N)) + 1 )) - 1;
+    return ~N & mask;
 }
