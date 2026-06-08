@@ -1,3 +1,0 @@
-Left and right running sum or product of an array.
-https://leetcode.com/problems/product-of-array-except-self/
-https://github.com/Shubham-Gaikwad23/Algorithms/blob/master/LeetCodeProblems/productOfArrayExceptSelf.c
