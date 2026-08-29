@@ -16,6 +16,13 @@
   - A simple approach is to compute the expected sum and subtract the actual sum.
   - Formula: expected sum = n(n + 1) / 2.
 
+- Missing Number In Range:
+  - Given an array containing n distinct numbers in the closed interval [m, n], find the missing one.
+  - The array length is (n - m) since all numbers from m to n are present except one.
+  - Approach: Use sum formula. Expected sum = sum(m to n) = sum(0 to n) - sum(0 to m-1).
+  - Missing number = expected sum - actual sum.
+  - Time complexity: O(n), Space complexity: O(1).
+
 - Row/Column Major Index:
   - Used to map 2D array positions to a 1D memory layout.
   - Row-major formula: index = (row * numCols) + col.

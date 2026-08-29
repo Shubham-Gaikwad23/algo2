@@ -37,7 +37,6 @@ void bubbleUp(Heap *h, int top) {
     int pIdx = PARENT(top);
     if (h->elems[pIdx] < h->elems[top]) {
         swap(h, pIdx, top);
-        
         // Recurse upwards
         bubbleUp(h, PARENT(top));
     }
