@@ -61,9 +61,9 @@ void insert(DList *list, int data, bool sorted) {
     }
 
     // The place is in the middle of the list
-    curr->prev->next = newElem;
-    newElem->prev = curr->prev;
     newElem->next = curr;
+    newElem->prev = curr->prev;
+    curr->prev->next = newElem;
     curr->prev = newElem;
 }
 

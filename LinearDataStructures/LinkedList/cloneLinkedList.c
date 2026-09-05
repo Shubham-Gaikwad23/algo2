@@ -2,19 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef struct SNode {
+typedef struct Node {
     int data;
-    struct SNode *next;
-    struct SNode *random;
-} SNode;
+    struct Node *next;
+    struct Node *random;
+}Node;
 
-typedef struct SList {
-    SNode *head;
-    SNode *tail;
-} SList;
+typedef struct List {
+    Node *head;
+    Node *tail;
+}List;
 
-static SNode *createNode(int data) {
-    SNode *node = malloc(sizeof(*node));
+static Node *createNode(int data) {
+    Node *node = malloc(sizeof(*node));
     assert(node != NULL);
 
     node->data = data;
@@ -23,96 +23,72 @@ static SNode *createNode(int data) {
     return node;
 }
 
-SList *cloneDList(SList *lst) {
-    if (lst->head == NULL) return NULL;
+Node * dupNode(Node *s) {
+    assert(s != NULL);
+    Node *t = malloc(sizeof(Node));
+    assert(t != NULL);
+    t->next = NULL;
+    t->random = NULL;
+    t->data = s->data;
+    return t;
+}
 
-    SNode *curr;
+void insertAtTail(List *lst, Node *node) {
+    assert(lst != NULL && node != NULL);
 
-    /* ---------------------------------------------------------------
-     * PASS 1: Interleave cloned nodes with original nodes.
-     *
-     * Before: A -> B -> C -> NULL
-     * After:  A -> A' -> B -> B' -> C -> C' -> NULL
-     *
-     * Each clone A' is inserted immediately after its original A.
-     * We do NOT set A'->random correctly yet -- we just copy it
-     * "as is" from A->random (which currently points to an ORIGINAL
-     * node, e.g. B). We'll fix it up to point to the CLONE (B') in
-     * pass 2, once every node has a clone sitting right next to it.
-     * ------------------------------------------------------------- */
-    for (curr = lst->head; curr != NULL; /* no increment here! */) {
-        SNode *origNext = curr->next;   // save the REAL next node
-                                         // before we rewire anything
+    if (lst->tail == NULL) {
+        lst->head = lst->tail = node;
+    } else {
+        lst->tail->next = node;
+        lst->tail = node;
+    }
+}
 
-        SNode *cln = createNode(curr->data);
-        cln->random = curr->random;     // temporary; fixed in pass 2
+List* cloneList(List* lst) {
+    assert(lst != NULL);
 
-        cln->next = origNext;           // clone points to what curr
-                                         // used to point to
-        curr->next = cln;               // curr now points to its clone
-
-        curr = origNext;                // advance to the NEXT ORIGINAL
-                                         // node (not the clone!)
+    // Clone the list in-place. Random pointer is not yet set.
+    Node *p = lst->head;
+    while (p != NULL) {
+        Node *dup = dupNode(p);
+        dup->next = p->next;
+        p->next = dup;
+        p = dup->next;
     }
 
-    /* ---------------------------------------------------------------
-     * PASS 2: Fix up the random pointers on the cloned nodes.
-     *
-     * At this point, list looks like: A -> A' -> B -> B' -> C -> C'
-     *
-     * If A->random == B, then A' should have random == B'.
-     * Since B' is always immediately after B (curr->random->next),
-     * we can find it directly -- no hash map needed!
-     * ------------------------------------------------------------- */
-    for (curr = lst->head; curr != NULL; curr = curr->next->next) {
-        SNode *cln = curr->next;        // the clone sits right after curr
-
-        if (curr->random != NULL) {
-            cln->random = curr->random->next;  // original's random's CLONE
+    // Now set the random pointer.
+    p = lst->head;
+    while (p != NULL) {
+        if (p->random == NULL) {
+            p->next->random = NULL;
+            p = p->next->next;
         } else {
-            cln->random = NULL;
+            p->next->random = p->random->next;
+            p = p->next->next;
         }
     }
 
-    /* ---------------------------------------------------------------
-     * PASS 3: Un-interleave -- split the combined list back into
-     * two separate lists: the original (restored) and the clone.
-     *
-     * Before: A -> A' -> B -> B' -> C -> C' -> NULL
-     * After:  A -> B -> C -> NULL          (original, restored)
-     *         A'-> B'-> C'-> NULL          (clone, the new list)
-     * ------------------------------------------------------------- */
-    SList *clonedLst = calloc(1, sizeof(SList));
-    clonedLst->head = lst->head->next;   // first clone node = A'
-
-    SNode *currCln;
-    for (curr = lst->head, currCln = clonedLst->head;
-         curr != NULL;
-         curr = curr->next, currCln = currCln->next) {
-
-        SNode *origNext = curr->next->next;   // B, the real next original
-                                               // (curr->next is currently A')
-
-        curr->next = origNext;                // restore original list: A -> B
-
-        if (origNext != NULL) {
-            currCln->next = origNext->next;   // clone list: A' -> B'
-        } else {
-            currCln->next = NULL;             // last node: terminate clone list
-        }
+    // Separate out the in-place cloned list
+    List *clonedLst = malloc(sizeof(List));
+    assert(clonedLst != NULL);
+    clonedLst->head = clonedLst->tail = NULL;
+    p = lst->head;
+    while (p != NULL) {
+        insertAtTail(clonedLst, p->next);
+        p->next = p->next->next;
+        p = p->next;
     }
 
-    clonedLst->tail = currCln;   // NOTE: currCln is NULL after the loop ends,
-                                  // see caution below
     return clonedLst;
 }
 
-static void buildList(SList *list, const int *values, size_t count,
+static void buildList(List *list, const int *values, size_t count,
                       const int *randomTargets) {
-    SNode *tail = NULL;
-    SNode **nodes = NULL;
+    Node *tail = NULL;
+    Node **nodes = NULL;
 
     list->head = NULL;
+    list->tail = NULL;
 
     if (count == 0) {
         return;
@@ -122,7 +98,7 @@ static void buildList(SList *list, const int *values, size_t count,
     assert(nodes != NULL);
 
     for (size_t i = 0; i < count; ++i) {
-        SNode *node = createNode(values[i]);
+        Node *node = createNode(values[i]);
         if (list->head == NULL) {
             list->head = node;
         } else {
@@ -131,6 +107,7 @@ static void buildList(SList *list, const int *values, size_t count,
         tail = node;
         nodes[i] = node;
     }
+    list->tail = tail;
 
     for (size_t i = 0; i < count; ++i) {
         if (randomTargets != NULL && randomTargets[i] >= 0) {
@@ -143,9 +120,9 @@ static void buildList(SList *list, const int *values, size_t count,
     free(nodes);
 }
 
-static void assertSameStructure(const SList *original, const SList *clone) {
-    const SNode *origCurr = original->head;
-    const SNode *cloneCurr = clone->head;
+static void assertSameStructure(const List *original, const List *clone) {
+    const Node *origCurr = original->head;
+    const Node *cloneCurr = clone->head;
 
     assert(original != NULL);
     assert(clone != NULL);
@@ -204,19 +181,15 @@ static void assertSameStructure(const SList *original, const SList *clone) {
 
 static void runCloneTest(const char *name, const int *values, size_t count,
                          const int *randomTargets) {
-    SList original;
-    SList *clone;
+    List original;
+    List *clone;
 
     buildList(&original, values, count, randomTargets);
-    clone = cloneDList(&original);
+    clone = cloneList(&original);
 
-    if (count == 0) {
-        assert(clone == NULL);
-    } else {
-        assertSameStructure(&original, clone);
-    }
+    assertSameStructure(&original, clone);
 
-    (void)name;
+    printf("Test name: %s, Result: PASS\n", name);
 }
 
 int main(void) {
@@ -226,6 +199,6 @@ int main(void) {
     runCloneTest("multiple elements", (const int[]){5, 2, 9, 1}, 4,
                  (const int[]){2, 0, 3, -1});
 
-    printf("All cloneDList tests passed.\n");
+    printf("All cloneList tests passed.\n");
     return 0;
 }
