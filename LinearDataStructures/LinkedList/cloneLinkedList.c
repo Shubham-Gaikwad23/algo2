@@ -120,55 +120,29 @@ static void buildList(List *list, const int *values, size_t count,
     free(nodes);
 }
 
-static void assertSameStructure(const List *original, const List *clone) {
+static void assertSameStructure(const List *original, const List *clone,
+                                size_t count) {
+    Node **originalNodes = count ? malloc(count * sizeof(*originalNodes)) : NULL;
+    Node **cloneNodes = count ? malloc(count * sizeof(*cloneNodes)) : NULL;
     const Node *origCurr = original->head;
     const Node *cloneCurr = clone->head;
 
     assert(original != NULL);
     assert(clone != NULL);
+    assert(count == 0 || (originalNodes != NULL && cloneNodes != NULL));
 
-    while (origCurr != NULL && cloneCurr != NULL) {
+    for (size_t i = 0; i < count; ++i) {
+        assert(origCurr != NULL);
+        assert(cloneCurr != NULL);
+        originalNodes[i] = (Node *)origCurr;
+        cloneNodes[i] = (Node *)cloneCurr;
         assert(origCurr->data == cloneCurr->data);
-        assert(origCurr != cloneCurr);   // clone must be a distinct node,
-                                          // never the same allocation
+        assert(origCurr != cloneCurr);
 
         if (origCurr->next == NULL) {
             assert(cloneCurr->next == NULL);
         } else {
             assert(cloneCurr->next != NULL);
-        }
-
-        /* -----------------------------------------------------------
-         * random pointer checks -- three cases to handle:
-         *
-         * 1. origCurr->random == NULL
-         *      -> cloneCurr->random must also be NULL
-         *
-         * 2. origCurr->random == origCurr (self-reference)
-         *      -> cloneCurr->random must be cloneCurr (self-reference
-         *         in the CLONE, not a pointer back into the original)
-         *
-         * 3. origCurr->random points to some OTHER node
-         *      -> cloneCurr->random must point to the CLONE of that
-         *         node (same data, and definitely not the same
-         *         allocation as anything in the original list)
-         * --------------------------------------------------------- */
-        if (origCurr->random == NULL) {
-            assert(cloneCurr->random == NULL);
-
-        } else if (origCurr->random == origCurr) {
-            // self-reference case: clone's random must point to
-            // ITSELF, not back to the original node
-            assert(cloneCurr->random == cloneCurr);
-
-        } else {
-            // points to a different node somewhere in the list
-            assert(cloneCurr->random != NULL);
-            assert(origCurr->random->data == cloneCurr->random->data);
-
-            // make sure clone truly built its own node graph,
-            // not just copied pointers into the original list
-            assert(cloneCurr->random != origCurr->random);
         }
 
         origCurr = origCurr->next;
@@ -177,6 +151,25 @@ static void assertSameStructure(const List *original, const List *clone) {
 
     assert(origCurr == NULL);
     assert(cloneCurr == NULL);
+    assert(original->tail == (count ? originalNodes[count - 1] : NULL));
+    assert(clone->tail == (count ? cloneNodes[count - 1] : NULL));
+
+    for (size_t i = 0; i < count; ++i) {
+        if (originalNodes[i]->random == NULL) {
+            assert(cloneNodes[i]->random == NULL);
+        } else {
+            size_t targetIndex = 0;
+            while (targetIndex < count &&
+                   originalNodes[targetIndex] != originalNodes[i]->random) {
+                ++targetIndex;
+            }
+            assert(targetIndex < count);
+            assert(cloneNodes[i]->random == cloneNodes[targetIndex]);
+        }
+    }
+
+    free(originalNodes);
+    free(cloneNodes);
 }
 
 static void runCloneTest(const char *name, const int *values, size_t count,
@@ -187,15 +180,28 @@ static void runCloneTest(const char *name, const int *values, size_t count,
     buildList(&original, values, count, randomTargets);
     clone = cloneList(&original);
 
-    assertSameStructure(&original, clone);
+    assertSameStructure(&original, clone, count);
 
     printf("Test name: %s, Result: PASS\n", name);
 }
 
 int main(void) {
     runCloneTest("empty list", NULL, 0, NULL);
-    // runCloneTest("single element", (const int[]){42}, 1, (const int[]){0});
+    runCloneTest("single element with null random",
+                 (const int[]){42}, 1, NULL);
+    runCloneTest("single element with self random",
+                 (const int[]){42}, 1, (const int[]){0});
+    runCloneTest("all null random pointers",
+                 (const int[]){1, 2, 3}, 3, NULL);
+    runCloneTest("all self random pointers",
+                 (const int[]){7, 8, 9}, 3, (const int[]){0, 1, 2});
+    runCloneTest("duplicate values with distinct random targets",
+                 (const int[]){5, 5, 5, 5}, 4, (const int[]){3, 2, 1, 0});
+    runCloneTest("all random pointers target one node",
+                 (const int[]){2, 4, 6, 8}, 4, (const int[]){2, 2, 2, 2});
     runCloneTest("two elements", (const int[]){10, 20}, 2, (const int[]){1, 0});
+    runCloneTest("mixed self, cross, and null random pointers",
+                 (const int[]){4, 6, 8, 10}, 4, (const int[]){0, 3, -1, 1});
     runCloneTest("multiple elements", (const int[]){5, 2, 9, 1}, 4,
                  (const int[]){2, 0, 3, -1});
 
